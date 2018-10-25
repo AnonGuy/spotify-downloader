@@ -48,11 +48,12 @@ def input_link(links):
             log.warning("Choose a valid number!")
 
 
-def trim_song(text_file):
+def trim_song(tracks_file):
     """ Remove the first song from file. """
-    with open(text_file, "r") as file_in:
+    log.debug("Removing downloaded song from tracks file")
+    with open(tracks_file, "r") as file_in:
         data = file_in.read().splitlines(True)
-    with open(text_file, "w") as file_out:
+    with open(tracks_file, "w") as file_out:
         file_out.writelines(data[1:])
     return data[0]
 
@@ -89,9 +90,7 @@ def format_string(string_format, tags, slugification=False, force_spaces=False):
     format_tags[11] = tags["external_ids"]["isrc"]
 
     format_tags_sanitized = {
-        k: sanitize_title(str(v), ok="'-_()[]{}")
-        if slugification
-        else str(v)
+        k: sanitize_title(str(v), ok="'-_()[]{}") if slugification else str(v)
         for k, v in format_tags.items()
     }
 
@@ -167,21 +166,25 @@ def get_splits(url):
     return splits
 
 
-def get_unique_tracks(text_file):
+def get_unique_tracks(tracks_file):
     """
     Returns a list of unique tracks given a path to a
     file containing tracks.
     """
 
-    with open(text_file, "r") as listed:
+    log.info(
+        "Checking and removing any duplicate tracks "
+        "in reading {}".format(tracks_file)
+    )
+    with open(tracks_file, "r") as tracks_in:
         # Read tracks into a list and remove any duplicates
-        lines = listed.read().splitlines()
+        lines = tracks_in.read().splitlines()
 
     # Remove blank and strip whitespaces from lines (if any)
     lines = [line.strip() for line in lines if line.strip()]
     lines = remove_duplicates(lines)
-
     return lines
+
 
 # a hacky way to get user's localized music directory
 # (thanks @linusg, issue #203)
@@ -203,9 +206,14 @@ def get_music_dir():
 
     # Windows / Cygwin
     # Queries registry for 'My Music' folder path (as this can be changed)
-    if 'win' in sys.platform:
+    if "win" in sys.platform:
         try:
-            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0, winreg.KEY_ALL_ACCESS)
+            key = winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+                0,
+                winreg.KEY_ALL_ACCESS,
+            )
             return winreg.QueryValueEx(key, "My Music")[0]
         except (FileNotFoundError, NameError):
             pass
